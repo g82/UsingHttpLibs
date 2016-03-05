@@ -2,11 +2,9 @@ package com.madwhale.g82.usinghttplibs;
 
 
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +14,8 @@ import com.madwhale.g82.usinghttplibs.server.ServerAPI;
 
 import java.io.IOException;
 
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -65,65 +65,42 @@ public class OKHttpFragment extends Fragment {
         return view;
     }
 
+    /**
+     * using okhttp
+     * https://github.com/square/okhttp
+     */
+
     private void attemptLogin() {
 
         String email = etEmail.getText().toString();
         String password = etPassword.getText().toString();
 
-        LoginApiTask loginApiTask = new LoginApiTask();
-        loginApiTask.execute(email, password);
+        MediaType mediaType = MediaType.parse("application/x-www-form-urlencoded");
 
-    }
+        OkHttpClient client = new OkHttpClient();
 
-    /**
-     *
-     * using okhttp
-     *
-     * https://github.com/square/okhttp
-     *
-     */
+        Uri.Builder builder = new Uri.Builder()
+                .appendQueryParameter("user_id", email)
+                .appendQueryParameter("user_pw", password);
+        String content = builder.build().getEncodedQuery();
 
-    private class LoginApiTask extends AsyncTask<String, Void, Boolean> {
+        RequestBody body = RequestBody.create(mediaType, content);
+        Request request = new Request.Builder()
+                .url(ServerAPI.LOGIN)
+                .post(body)
+                .build();
 
-        private static final String TAG = "LoginApiTask";
-
-        @Override
-        protected Boolean doInBackground(String... params) {
-
-            String email = params[0];
-            String password = params[1];
-
-            MediaType mediaType = MediaType.parse("application/x-www-form-urlencoded");
-
-            OkHttpClient client = new OkHttpClient();
-
-            Uri.Builder builder = new Uri.Builder()
-                    .appendQueryParameter("user_id", email)
-                    .appendQueryParameter("user_pw", password);
-            String content = builder.build().getEncodedQuery();
-
-            RequestBody body = RequestBody.create(mediaType, content);
-            Request request = new Request.Builder()
-                    .url(ServerAPI.LOGIN)
-                    .post(body)
-                    .build();
-
-            try {
-                Response response = client.newCall(request).execute();
-                String result = response.body().string();
-                return result.equals("success");
-
-            } catch (IOException e) {
-                Log.d("usingOkHttp", e.getMessage());
-                return false;
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Snackbar.make(getActivity().findViewById(R.id.main_content), "Okhttp : " + e.getMessage(), Snackbar.LENGTH_LONG).show();
             }
-        }
 
-        @Override
-        protected void onPostExecute(Boolean aBoolean) {
-            super.onPostExecute(aBoolean);
-            Snackbar.make(getActivity().findViewById(R.id.main_content), "OkHttp : " + aBoolean.toString(), Snackbar.LENGTH_LONG).show();
-        }
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                Snackbar.make(getActivity().findViewById(R.id.main_content), "Okhttp : " + response.body().string(), Snackbar.LENGTH_LONG).show();
+            }
+        });
 
     }
 
